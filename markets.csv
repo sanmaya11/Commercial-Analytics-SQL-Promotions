@@ -1,0 +1,5 @@
+market_id,country,region,currency,exchange_rate_to_usd
+1,USA,North America,USD,1.0
+2,India,Asia,INR,0.012
+3,Germany,Europe,EUR,1.1
+4,Brazil,South America,BRL,0.2

@@ -1,0 +1,126 @@
+CREATE DATABASE IF NOT EXISTS PharmaSalesDB;
+USE PharmaSalesDB ;
+-- products table
+CREATE TABLE products (
+    product_id INT PRIMARY KEY,
+    brand_name VARCHAR(100),
+    therapy_area VARCHAR(50),
+    launch_date DATE,
+    form_factor VARCHAR(50)
+);
+
+-- markets table
+CREATE TABLE markets (
+    market_id INT PRIMARY KEY,
+    country VARCHAR(50),
+    region VARCHAR(50),
+    currency VARCHAR(10),
+    exchange_rate_to_usd DECIMAL(10, 4)
+);
+
+-- sales_data table
+CREATE TABLE sales_data (
+    sale_id INT PRIMARY KEY,
+    product_id INT REFERENCES products(product_id),
+    market_id INT REFERENCES markets(market_id),
+    sale_date DATE,
+    channel VARCHAR(50),
+    units_sold INT,
+    gross_sales_usd DECIMAL(12, 2)
+);
+
+-- promotions table
+CREATE TABLE promotions (
+    promotion_id INT PRIMARY KEY,
+    product_id INT REFERENCES products(product_id),
+    market_id INT REFERENCES markets(market_id),
+    promotion_type VARCHAR(50),
+    start_date DATE,
+    end_date DATE,
+    spend_usd DECIMAL(12, 2)
+);
+SET GLOBAL local_infile = 1;
+SHOW VARIABLES LIKE 'local_infile';
+
+-- Monthly Sales Trends per Product
+SELECT 
+    p.brand_name,
+    DATE_FORMAT(s.sale_date, '%Y-%m') AS month,
+    SUM(s.units_sold) AS total_units,
+    SUM(s.gross_sales_usd) AS total_sales
+FROM sales_data s
+JOIN products p ON s.product_id = p.product_id
+GROUP BY p.brand_name, month
+ORDER BY month;
+
+-- Sales by Channel
+SELECT channel,
+       SUM(units_sold) AS total_units,
+       SUM(gross_sales_usd) AS total_sales
+FROM sales_data
+GROUP BY channel
+ORDER BY total_sales DESC;
+
+-- Market Performance by Region
+SELECT region, country,
+       SUM(gross_sales_usd) AS total_sales
+FROM sales_data s
+JOIN markets m ON s.market_id = m.market_id
+GROUP BY region, country
+ORDER BY total_sales DESC;
+
+-- Promotion ROI by Market and Product
+WITH promo_sales AS (
+  SELECT p.promotion_id, p.product_id, p.market_id,
+         SUM(s.gross_sales_usd) AS promo_sales
+  FROM promotions p
+  JOIN sales_data s ON s.product_id = p.product_id
+    AND s.market_id = p.market_id
+    AND s.sale_date BETWEEN p.start_date AND p.end_date
+  GROUP BY p.promotion_id, p.product_id, p.market_id
+)
+SELECT pr.brand_name, m.country,
+       p.promotion_type, p.spend_usd, ps.promo_sales,
+       ROUND(ps.promo_sales / NULLIF(p.spend_usd, 0), 2) AS roi
+FROM promo_sales ps
+JOIN promotions p ON ps.promotion_id = p.promotion_id
+JOIN products pr ON pr.product_id = p.product_id
+JOIN markets m ON m.market_id = p.market_id
+ORDER BY roi DESC;
+
+--  Product Format Performance
+SELECT form_factor,
+       SUM(units_sold) AS total_units,
+       SUM(gross_sales_usd) AS total_sales
+FROM products p
+JOIN sales_data s ON p.product_id = s.product_id
+GROUP BY form_factor
+ORDER BY total_sales DESC;
+
+-- Promotion ROI Total Data
+SELECT 
+    pr.promotion_id,
+    p.brand_name,
+    m.country,
+    pr.promotion_type,
+    pr.start_date,
+    pr.end_date,
+    pr.spend_usd,
+    IFNULL(SUM(s.gross_sales_usd), 0) AS revenue_during_promo,
+    ROUND(IFNULL(SUM(s.gross_sales_usd) / pr.spend_usd, 0), 2) AS roi
+FROM promotions pr
+JOIN products p ON pr.product_id = p.product_id
+JOIN markets m ON pr.market_id = m.market_id
+LEFT JOIN sales_data s 
+       ON s.product_id = pr.product_id
+      AND s.market_id = pr.market_id
+      AND s.sale_date BETWEEN pr.start_date AND pr.end_date
+GROUP BY 
+    pr.promotion_id,
+    p.brand_name,
+    m.country,
+    pr.promotion_type,
+    pr.start_date,
+    pr.end_date,
+    pr.spend_usd
+ORDER BY roi DESC;

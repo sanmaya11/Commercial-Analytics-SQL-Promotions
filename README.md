@@ -16,24 +16,6 @@ This project analyzes brand performance and promotional efficiency across multip
 
 ---
 
-## 🗂️ Folder Structure
-Commercial-Analytics-SQL-Promotions/
-├── SQL/
-│ ├── schema.sql
-│ ├── data_inserts.sql
-│ ├── business_insights.sql
-│ └── performance_queries.sql
-├── PowerBI/
-│ └── Promotion_Analytics.pbix
-├── Data/
-│ ├── sales_data.csv
-│ ├── promotions.csv
-│ ├── products.csv
-│ └── markets.csv
-├── screenshots/
-│ ├── dashboard_main.png
-│ └── roi_by_country.png
-└── README.md
 
 ## 📈 Key Business Insights
 
